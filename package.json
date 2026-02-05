@@ -12,7 +12,8 @@
 		"router"
 	],
 	"author": {
-		"name": "EUrouter"
+		"name": "EUrouter",
+		"email": "david@eurouter.ai"
 	},
 	"repository": {
 		"type": "git",
