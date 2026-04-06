@@ -54,7 +54,7 @@ export class EUrouterChatModel implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will generate the completion. <a href="https://www.eurouter.ai/models">Browse all models</a>.',
+					'The model which will generate the completion. Append :floor for cheapest, :nitro for fastest, or :free for free providers. <a href="https://www.eurouter.ai/models">Browse all models</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {
@@ -186,6 +186,142 @@ export class EUrouterChatModel implements INodeType {
 					},
 				],
 			},
+			{
+				displayName: 'Routing',
+				name: 'routing',
+				placeholder: 'Add Routing Option',
+				description: 'Control how EUrouter routes your request to providers',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Sort By',
+						name: 'sort',
+						type: 'options',
+						default: '',
+						description: 'Prioritize providers by a specific metric',
+						options: [
+							{
+								name: 'Default (Best Score)',
+								value: '',
+								description: 'EUrouter default: health / price²',
+							},
+							{
+								name: 'Price (Cheapest First)',
+								value: 'price',
+								description: 'Route to cheapest provider first',
+							},
+							{
+								name: 'Latency (Fastest First)',
+								value: 'latency',
+								description: 'Route to lowest latency provider first',
+							},
+							{
+								name: 'Throughput (Highest First)',
+								value: 'throughput',
+								description: 'Route to highest throughput provider first',
+							},
+						],
+					},
+					{
+						displayName: 'Provider Order',
+						name: 'order',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of provider slugs to try in order (e.g. "scaleway,nebius,tensorix")',
+					},
+					{
+						displayName: 'Only Use Providers',
+						name: 'only',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of provider slugs to exclusively use (e.g. "mistral,scaleway")',
+					},
+					{
+						displayName: 'Ignore Providers',
+						name: 'ignore',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of provider slugs to never use (e.g. "nebius")',
+					},
+					{
+						displayName: 'Allow Fallbacks',
+						name: 'allowFallbacks',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to automatically retry with other providers on failure',
+					},
+					{
+						displayName: 'Data Residency',
+						name: 'dataResidency',
+						type: 'options',
+						default: '',
+						description: 'Restrict to providers in a specific region',
+						options: [
+							{
+								name: 'Any EU',
+								value: '',
+								description: 'Any EU provider (default)',
+							},
+							{
+								name: 'EU',
+								value: 'eu',
+								description: 'European Union',
+							},
+							{
+								name: 'EEA',
+								value: 'eea',
+								description: 'European Economic Area',
+							},
+							{
+								name: 'Germany',
+								value: 'de',
+							},
+							{
+								name: 'France',
+								value: 'fr',
+							},
+						],
+					},
+					{
+						displayName: 'EU-Owned Providers Only',
+						name: 'euOwned',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to only use providers headquartered in the EEA',
+					},
+					{
+						displayName: 'Max Data Retention (Days)',
+						name: 'maxRetentionDays',
+						type: 'number',
+						default: -1,
+						description: 'Maximum data retention in days. Set to 0 for zero retention. -1 for no limit.',
+					},
+					{
+						displayName: 'Data Collection',
+						name: 'dataCollection',
+						type: 'options',
+						default: '',
+						description: 'Control whether providers can use data for training',
+						options: [
+							{
+								name: 'Default',
+								value: '',
+							},
+							{
+								name: 'Allow',
+								value: 'allow',
+								description: 'Allow providers to use data for training',
+							},
+							{
+								name: 'Deny',
+								value: 'deny',
+								description: 'Deny providers from using data for training',
+							},
+						],
+					},
+				],
+			},
 		],
 	};
 
@@ -205,10 +341,44 @@ export class EUrouterChatModel implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const routing = this.getNodeParameter('routing', itemIndex, {}) as {
+			sort?: string;
+			order?: string;
+			only?: string;
+			ignore?: string;
+			allowFallbacks?: boolean;
+			dataResidency?: string;
+			euOwned?: boolean;
+			maxRetentionDays?: number;
+			dataCollection?: string;
+		};
+
+		// Build the provider object for EUrouter routing
+		const provider: Record<string, unknown> = {};
+		if (routing.sort) provider.sort = routing.sort;
+		if (routing.order) provider.order = routing.order.split(',').map((s) => s.trim());
+		if (routing.only) provider.only = routing.only.split(',').map((s) => s.trim());
+		if (routing.ignore) provider.ignore = routing.ignore.split(',').map((s) => s.trim());
+		if (routing.allowFallbacks === false) provider.allow_fallbacks = false;
+		if (routing.dataResidency) provider.data_residency = routing.dataResidency;
+		if (routing.euOwned) provider.eu_owned = true;
+		if (routing.maxRetentionDays !== undefined && routing.maxRetentionDays >= 0) {
+			provider.max_retention_days = routing.maxRetentionDays;
+		}
+		if (routing.dataCollection) provider.data_collection = routing.dataCollection;
+
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 		};
+
+		const modelKwargs: Record<string, unknown> = {};
+		if (options.responseFormat) {
+			modelKwargs.response_format = { type: options.responseFormat };
+		}
+		if (Object.keys(provider).length > 0) {
+			modelKwargs.provider = provider;
+		}
 
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
@@ -217,11 +387,7 @@ export class EUrouterChatModel implements INodeType {
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 		});
 
 		return {
