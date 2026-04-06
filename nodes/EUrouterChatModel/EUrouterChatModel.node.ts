@@ -370,6 +370,10 @@ export class EUrouterChatModel implements INodeType {
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			defaultHeaders: {
+				'HTTP-Referer': 'https://n8n.io',
+				'X-EUrouter-Title': 'n8n',
+			},
 		};
 
 		const modelKwargs: Record<string, unknown> = {};

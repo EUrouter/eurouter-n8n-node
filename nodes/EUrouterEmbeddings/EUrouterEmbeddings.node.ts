@@ -157,6 +157,10 @@ export class EUrouterEmbeddings implements INodeType {
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
+			defaultHeaders: {
+				'HTTP-Referer': 'https://n8n.io',
+				'X-EUrouter-Title': 'n8n',
+			},
 		};
 
 		const embeddings = new OpenAIEmbeddings({
