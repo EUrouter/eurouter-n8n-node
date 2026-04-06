@@ -1,0 +1,51 @@
+{
+	"name": "n8n-nodes-eurouter",
+	"version": "1.0.0",
+	"description": "n8n community node for EUrouter — EU-hosted, GDPR-friendly AI gateway with 68+ models",
+	"license": "MIT",
+	"homepage": "https://www.eurouter.ai",
+	"keywords": [
+		"n8n-community-node-package",
+		"n8n",
+		"eurouter",
+		"ai",
+		"llm",
+		"eu",
+		"gdpr",
+		"openai-compatible"
+	],
+	"author": {
+		"name": "EUrouter",
+		"email": "david@eurouter.ai"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/EUrouter/eurouter-n8n-node.git"
+	},
+	"scripts": {
+		"build": "tsc && cp -r icons dist/icons && cp -r nodes/**/*.svg dist/nodes/EUrouterChatModel/ 2>/dev/null || true",
+		"dev": "tsc --watch",
+		"lint": "eslint . --ext .ts",
+		"prepublishOnly": "npm run build"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"credentials": [
+			"dist/credentials/EUrouterApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/EUrouterChatModel/EUrouterChatModel.node.js"
+		]
+	},
+	"devDependencies": {
+		"typescript": "~5.7.0",
+		"@types/node": "^22.0.0"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*",
+		"@langchain/openai": "*"
+	}
+}
