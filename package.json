@@ -23,7 +23,7 @@
 		"url": "https://github.com/EUrouter/eurouter-n8n-node.git"
 	},
 	"scripts": {
-		"build": "tsc && cp -r icons dist/icons && cp -r nodes/**/*.svg dist/nodes/EUrouterChatModel/ 2>/dev/null || true",
+		"build": "tsc && cp -r icons dist/icons && cp nodes/EUrouterChatModel/*.svg dist/nodes/EUrouterChatModel/ && cp nodes/EUrouterEmbeddings/*.svg dist/nodes/EUrouterEmbeddings/ 2>/dev/null || true",
 		"dev": "tsc --watch",
 		"lint": "eslint . --ext .ts",
 		"prepublishOnly": "npm run build"
@@ -37,7 +37,8 @@
 			"dist/credentials/EUrouterApi.credentials.js"
 		],
 		"nodes": [
-			"dist/nodes/EUrouterChatModel/EUrouterChatModel.node.js"
+			"dist/nodes/EUrouterChatModel/EUrouterChatModel.node.js",
+			"dist/nodes/EUrouterEmbeddings/EUrouterEmbeddings.node.js"
 		]
 	},
 	"devDependencies": {
