@@ -1,5 +1,3 @@
-import { OpenAIEmbeddings } from '@langchain/openai';
-import type { ClientOptions } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,6 +5,11 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import {
+	createEUrouterDefaultHeaders,
+	EUrouterEmbeddingsClient,
+	type EUrouterEmbeddingsResponse,
+} from '../shared/eurouterAi';
 
 export class EUrouterEmbeddings implements INodeType {
 	description: INodeTypeDescription = {
@@ -155,22 +158,25 @@ export class EUrouterEmbeddings implements INodeType {
 			dimensions?: number;
 		};
 
-		const configuration: ClientOptions = {
-			baseURL: credentials.url,
-			defaultHeaders: {
-				'HTTP-Referer': 'https://n8n.io',
-				'X-EUrouter-Title': 'n8n',
-			},
-		};
-
-		const embeddings = new OpenAIEmbeddings({
-			model: modelName,
-			apiKey: credentials.apiKey,
+		const embeddings = new EUrouterEmbeddingsClient({
+			headers: createEUrouterDefaultHeaders(),
 			batchSize: options.batchSize,
+			dimensions: options.dimensions && options.dimensions > 0 ? options.dimensions : undefined,
+			model: modelName,
+			request: async (request) => {
+				const response = await this.helpers.httpRequestWithAuthentication.call(this, 'eUrouterApi', {
+					method: 'POST',
+					url: `${credentials.url}${request.path}`,
+					body: request.body,
+					headers: request.headers,
+					json: true,
+					timeout: request.timeout,
+				});
+
+				return response as EUrouterEmbeddingsResponse;
+			},
 			stripNewLines: options.stripNewLines,
 			timeout: options.timeout,
-			dimensions: options.dimensions && options.dimensions > 0 ? options.dimensions : undefined,
-			configuration,
 		});
 
 		return {

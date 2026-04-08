@@ -1,5 +1,4 @@
-import { ChatOpenAI } from '@langchain/openai';
-import type { ClientOptions } from '@langchain/openai';
+import { supplyModel } from '@n8n/ai-node-sdk';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,6 +6,12 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import {
+	buildChatAdditionalParams,
+	createEUrouterDefaultHeaders,
+	type EUrouterChatRouting,
+	type EUrouterResponseFormat,
+} from '../shared/eurouterAi';
 
 export class EUrouterChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -114,15 +119,30 @@ export class EUrouterChatModel implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'Maximum number of retries to attempt',
+						type: 'number',
+					},
+					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokens',
 						default: -1,
-						description:
-							'The maximum number of tokens to generate in the completion.',
+						description: 'The maximum number of tokens to generate in the completion',
 						type: 'number',
 						typeOptions: {
 							maxValue: 128000,
 						},
+					},
+					{
+						displayName: 'Presence Penalty',
+						name: 'presencePenalty',
+						default: 0,
+						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+						description:
+							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
+						type: 'number',
 					},
 					{
 						displayName: 'Response Format',
@@ -144,15 +164,6 @@ export class EUrouterChatModel implements INodeType {
 						],
 					},
 					{
-						displayName: 'Presence Penalty',
-						name: 'presencePenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
-						type: 'number',
-					},
-					{
 						displayName: 'Sampling Temperature',
 						name: 'temperature',
 						default: 0.7,
@@ -166,13 +177,6 @@ export class EUrouterChatModel implements INodeType {
 						name: 'timeout',
 						default: 360000,
 						description: 'Maximum amount of time a request is allowed to take in milliseconds',
-						type: 'number',
-					},
-					{
-						displayName: 'Max Retries',
-						name: 'maxRetries',
-						default: 2,
-						description: 'Maximum number of retries to attempt',
 						type: 'number',
 					},
 					{
@@ -194,6 +198,103 @@ export class EUrouterChatModel implements INodeType {
 				type: 'collection',
 				default: {},
 				options: [
+					{
+						displayName: 'Allow Fallbacks',
+						name: 'allowFallbacks',
+						type: 'boolean',
+						default: true,
+						description: 'Whether to automatically retry with other providers on failure',
+					},
+					{
+						displayName: 'Data Collection',
+						name: 'dataCollection',
+						type: 'options',
+						default: '',
+						description: 'Control whether providers can use data for training',
+						options: [
+							{
+								name: 'Default',
+								value: '',
+							},
+							{
+								name: 'Allow',
+								value: 'allow',
+								description: 'Allow providers to use data for training',
+							},
+							{
+								name: 'Deny',
+								value: 'deny',
+								description: 'Deny providers from using data for training',
+							},
+						],
+					},
+					{
+						displayName: 'Data Residency',
+						name: 'dataResidency',
+						type: 'options',
+						default: '',
+						description: 'Restrict to providers in a specific region',
+						options: [
+							{
+								name: 'Any EU',
+								value: '',
+								description: 'Any EU provider (default)',
+							},
+							{
+								name: 'EEA',
+								value: 'eea',
+								description: 'European Economic Area',
+							},
+							{
+								name: 'EU',
+								value: 'eu',
+								description: 'European Union',
+							},
+							{
+								name: 'France',
+								value: 'fr',
+							},
+							{
+								name: 'Germany',
+								value: 'de',
+							},
+						],
+					},
+					{
+						displayName: 'EU-Owned Providers Only',
+						name: 'euOwned',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to only use providers headquartered in the EEA',
+					},
+					{
+						displayName: 'Ignore Providers',
+						name: 'ignore',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of provider slugs to never use (e.g. "nebius")',
+					},
+					{
+						displayName: 'Max Data Retention (Days)',
+						name: 'maxRetentionDays',
+						type: 'number',
+						default: -1,
+						description: 'Maximum data retention in days. Set to 0 for zero retention. -1 for no limit.',
+					},
+					{
+						displayName: 'Only Use Providers',
+						name: 'only',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of provider slugs to exclusively use (e.g. "mistral,scaleway")',
+					},
+					{
+						displayName: 'Provider Order',
+						name: 'order',
+						type: 'string',
+						default: '',
+						description: 'Comma-separated list of provider slugs to try in order (e.g. "scaleway,nebius,tensorix")',
+					},
 					{
 						displayName: 'Sort By',
 						name: 'sort',
@@ -220,103 +321,6 @@ export class EUrouterChatModel implements INodeType {
 								name: 'Throughput (Highest First)',
 								value: 'throughput',
 								description: 'Route to highest throughput provider first',
-							},
-						],
-					},
-					{
-						displayName: 'Provider Order',
-						name: 'order',
-						type: 'string',
-						default: '',
-						description: 'Comma-separated list of provider slugs to try in order (e.g. "scaleway,nebius,tensorix")',
-					},
-					{
-						displayName: 'Only Use Providers',
-						name: 'only',
-						type: 'string',
-						default: '',
-						description: 'Comma-separated list of provider slugs to exclusively use (e.g. "mistral,scaleway")',
-					},
-					{
-						displayName: 'Ignore Providers',
-						name: 'ignore',
-						type: 'string',
-						default: '',
-						description: 'Comma-separated list of provider slugs to never use (e.g. "nebius")',
-					},
-					{
-						displayName: 'Allow Fallbacks',
-						name: 'allowFallbacks',
-						type: 'boolean',
-						default: true,
-						description: 'Whether to automatically retry with other providers on failure',
-					},
-					{
-						displayName: 'Data Residency',
-						name: 'dataResidency',
-						type: 'options',
-						default: '',
-						description: 'Restrict to providers in a specific region',
-						options: [
-							{
-								name: 'Any EU',
-								value: '',
-								description: 'Any EU provider (default)',
-							},
-							{
-								name: 'EU',
-								value: 'eu',
-								description: 'European Union',
-							},
-							{
-								name: 'EEA',
-								value: 'eea',
-								description: 'European Economic Area',
-							},
-							{
-								name: 'Germany',
-								value: 'de',
-							},
-							{
-								name: 'France',
-								value: 'fr',
-							},
-						],
-					},
-					{
-						displayName: 'EU-Owned Providers Only',
-						name: 'euOwned',
-						type: 'boolean',
-						default: false,
-						description: 'Whether to only use providers headquartered in the EEA',
-					},
-					{
-						displayName: 'Max Data Retention (Days)',
-						name: 'maxRetentionDays',
-						type: 'number',
-						default: -1,
-						description: 'Maximum data retention in days. Set to 0 for zero retention. -1 for no limit.',
-					},
-					{
-						displayName: 'Data Collection',
-						name: 'dataCollection',
-						type: 'options',
-						default: '',
-						description: 'Control whether providers can use data for training',
-						options: [
-							{
-								name: 'Default',
-								value: '',
-							},
-							{
-								name: 'Allow',
-								value: 'allow',
-								description: 'Allow providers to use data for training',
-							},
-							{
-								name: 'Deny',
-								value: 'deny',
-								description: 'Deny providers from using data for training',
 							},
 						],
 					},
@@ -353,49 +357,27 @@ export class EUrouterChatModel implements INodeType {
 			dataCollection?: string;
 		};
 
-		// Build the provider object for EUrouter routing
-		const provider: Record<string, unknown> = {};
-		if (routing.sort) provider.sort = routing.sort;
-		if (routing.order) provider.order = routing.order.split(',').map((s) => s.trim());
-		if (routing.only) provider.only = routing.only.split(',').map((s) => s.trim());
-		if (routing.ignore) provider.ignore = routing.ignore.split(',').map((s) => s.trim());
-		if (routing.allowFallbacks === false) provider.allow_fallbacks = false;
-		if (routing.dataResidency) provider.data_residency = routing.dataResidency;
-		if (routing.euOwned) provider.eu_owned = true;
-		if (routing.maxRetentionDays !== undefined && routing.maxRetentionDays >= 0) {
-			provider.max_retention_days = routing.maxRetentionDays;
-		}
-		if (routing.dataCollection) provider.data_collection = routing.dataCollection;
-
-		const timeout = options.timeout;
-		const configuration: ClientOptions = {
-			baseURL: credentials.url,
-			defaultHeaders: {
-				'HTTP-Referer': 'https://n8n.io',
-				'X-EUrouter-Title': 'n8n',
-			},
-		};
-
-		const modelKwargs: Record<string, unknown> = {};
-		if (options.responseFormat) {
-			modelKwargs.response_format = { type: options.responseFormat };
-		}
-		if (Object.keys(provider).length > 0) {
-			modelKwargs.provider = provider;
-		}
-
-		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
-			model: modelName,
-			...options,
-			timeout,
-			maxRetries: options.maxRetries ?? 2,
-			configuration,
-			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
+		const additionalParams = buildChatAdditionalParams({
+			responseFormat: options.responseFormat as EUrouterResponseFormat | undefined,
+			routing: routing as EUrouterChatRouting,
 		});
 
-		return {
-			response: model,
-		};
+		return supplyModel(this, {
+			type: 'openai',
+			baseUrl: credentials.url,
+			apiKey: credentials.apiKey,
+			model: modelName,
+			defaultHeaders: createEUrouterDefaultHeaders(),
+			frequencyPenalty: options.frequencyPenalty,
+			maxTokens:
+				options.maxTokens !== undefined && options.maxTokens >= 0 ? options.maxTokens : undefined,
+			maxRetries: options.maxRetries ?? 2,
+			presencePenalty: options.presencePenalty,
+			temperature: options.temperature,
+			timeout: options.timeout,
+			topP: options.topP,
+			additionalParams:
+				Object.keys(additionalParams).length > 0 ? additionalParams : undefined,
+		});
 	}
 }
