@@ -10,6 +10,8 @@ export class EUrouterApi implements ICredentialType {
 
 	displayName = 'EUrouter API';
 
+	icon = 'file:../nodes/EUrouterChatModel/eurouter-icon.svg' as const;
+
 	documentationUrl = 'https://www.eurouter.ai/docs/concepts/authentication';
 
 	properties: INodeProperties[] = [
@@ -25,7 +27,7 @@ export class EUrouterApi implements ICredentialType {
 		},
 		{
 			displayName:
-				'⚙️ <b>App Attribution</b> (optional)<br/>By default, every request from this node is attributed to <b>n8n</b> in EUrouter analytics. If you are embedding n8n inside your own product (agency platform, internal tool, SaaS), you can override the attribution below to track usage under your own brand. <a href="https://www.eurouter.ai/docs/concepts/app-attribution" target="_blank">Learn more</a>.',
+				'⚙️ <b>App Attribution</b> (optional)<br/>By default, every request from this node is attributed to <b>n8n</b> in EUrouter analytics. If you are embedding n8n inside your own product, you can override the attribution below to track usage under your own brand. <a href="https://www.eurouter.ai/docs/concepts/app-attribution" target="_blank">Learn more</a>.',
 			name: 'attributionNotice',
 			type: 'notice',
 			default: '',
@@ -37,7 +39,7 @@ export class EUrouterApi implements ICredentialType {
 			default: '',
 			placeholder: 'https://n8n.io',
 			description:
-				'Overrides the <code>HTTP-Referer</code> header. Leave empty to attribute to n8n. Set this to your own app URL if you are embedding n8n inside a product.',
+				'Overrides the <code>HTTP-Referer</code> header. Leave empty to attribute requests to n8n.',
 		},
 		{
 			displayName: 'App Title',
@@ -46,7 +48,7 @@ export class EUrouterApi implements ICredentialType {
 			default: '',
 			placeholder: 'n8n',
 			description:
-				'Overrides the <code>X-EUrouter-Title</code> header. Leave empty to attribute to n8n. Set this to your app name to appear in EUrouter rankings under your own brand.',
+				'Overrides the <code>X-EUrouter-Title</code> header. Leave empty to attribute requests to n8n.',
 		},
 		{
 			displayName: 'App Categories',
@@ -55,7 +57,7 @@ export class EUrouterApi implements ICredentialType {
 			default: '',
 			placeholder: 'programming-app,cloud-agent',
 			description:
-				'Overrides the <code>X-EUrouter-Categories</code> header. Comma-separated, from EUrouter\'s allowed list: <code>cli-agent</code>, <code>ide-extension</code>, <code>cloud-agent</code>, <code>programming-app</code>, <code>native-app-builder</code>, <code>creative-writing</code>, <code>video-gen</code>, <code>image-gen</code>, <code>writing-assistant</code>, <code>general-chat</code>, <code>personal-agent</code>, <code>roleplay</code>, <code>game</code>. Defaults to <code>programming-app,cloud-agent</code>.',
+				'Overrides the <code>X-EUrouter-Categories</code> header. Use comma-separated values from EUrouter\'s allowed list. Leave empty for the default <code>programming-app,cloud-agent</code>.',
 		},
 		{
 			displayName: 'Base URL',
@@ -77,8 +79,17 @@ export class EUrouterApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.url }}',
-			url: '/models',
+			url: '/credits',
 			method: 'GET',
 		},
+		rules: [
+			{
+				type: 'responseCode',
+				properties: {
+					value: 200,
+					message: 'Invalid API key',
+				},
+			},
+		],
 	};
 }

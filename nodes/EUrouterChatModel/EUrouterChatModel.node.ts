@@ -1,5 +1,4 @@
-import { ChatOpenAI } from '@langchain/openai';
-import type { ClientOptions } from '@langchain/openai';
+import { supplyModel } from '@n8n/ai-node-sdk';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -7,6 +6,13 @@ import {
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
+import {
+	buildChatAdditionalParams,
+	createEUrouterDefaultHeaders,
+	type EUrouterChatRouting,
+	type EUrouterCredentialData,
+	type EUrouterResponseFormat,
+} from '../shared/eurouterAi';
 
 export class EUrouterChatModel implements INodeType {
 	description: INodeTypeDescription = {
@@ -15,7 +21,8 @@ export class EUrouterChatModel implements INodeType {
 		icon: 'file:eurouter-icon.svg',
 		group: ['transform'],
 		version: [1],
-		description: 'The European AI gateway. 100+ models, all served from EU infrastructure with GDPR-friendly defaults.',
+		description:
+			'The European AI gateway. 100+ models, all served from EU infrastructure with GDPR-friendly defaults.',
 		defaults: {
 			name: 'EUrouter Chat Model',
 		},
@@ -51,7 +58,8 @@ export class EUrouterChatModel implements INodeType {
 		},
 		properties: [
 			{
-				displayName: '🇪🇺 Every request is routed through European infrastructure by default. Use the <b>Provider Routing & Privacy</b> options below to lock down to a specific country, EU-owned providers only, zero data retention, or no training-data collection.',
+				displayName:
+					'🇪🇺 Every request is routed through European infrastructure by default. Use the <b>Provider Routing & Privacy</b> options below to lock down to a specific country, EU-owned providers only, zero data retention, or no training-data collection.',
 				name: 'eUrouterNotice',
 				type: 'notice',
 				default: '',
@@ -60,8 +68,7 @@ export class EUrouterChatModel implements INodeType {
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
-				description:
-					'Which EUrouter model to use. The list is fetched live from your account. <a href="https://www.eurouter.ai/models" target="_blank">Browse all models</a>. <br/><br/>Tip: append <code>:floor</code> for cheapest, <code>:nitro</code> for fastest, or <code>:free</code> where available.',
+				description: 'Which EUrouter model to use. The list is fetched live from your account. <a href="https://www.eurouter.ai/models" target="_blank">Browse all models</a>.Tip: append <code>:floor</code> for cheapest, <code>:nitro</code> for fastest, or <code>:free</code> where available.',
 				typeOptions: {
 					loadOptions: {
 						routing: {
@@ -107,7 +114,7 @@ export class EUrouterChatModel implements INodeType {
 				displayName: 'Sampling Options',
 				name: 'options',
 				placeholder: 'Add Option',
-				description: 'Generation parameters: temperature, token limits, response format, retries, and timeout',
+				description: 'Generation parameters such as temperature, token limits, response format, retries, and timeout',
 				type: 'collection',
 				default: {},
 				options: [
@@ -121,6 +128,13 @@ export class EUrouterChatModel implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Max Retries',
+						name: 'maxRetries',
+						default: 2,
+						description: 'How many times the SDK should retry transient network failures',
+						type: 'number',
+					},
+					{
 						displayName: 'Maximum Number of Tokens',
 						name: 'maxTokens',
 						default: -1,
@@ -130,6 +144,15 @@ export class EUrouterChatModel implements INodeType {
 						typeOptions: {
 							maxValue: 128000,
 						},
+					},
+					{
+						displayName: 'Presence Penalty',
+						name: 'presencePenalty',
+						default: 0,
+						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
+						description:
+							'Penalize tokens that have appeared at all, encouraging the model to introduce new topics. Range: -2 to 2.',
+						type: 'number',
 					},
 					{
 						displayName: 'Response Format',
@@ -146,18 +169,10 @@ export class EUrouterChatModel implements INodeType {
 							{
 								name: 'JSON Object',
 								value: 'json_object',
-								description: 'Constrain the model to return valid JSON. Only supported on JSON-capable models.',
+								description:
+									'Constrain the model to return valid JSON. Only supported on JSON-capable models.',
 							},
 						],
-					},
-					{
-						displayName: 'Presence Penalty',
-						name: 'presencePenalty',
-						default: 0,
-						typeOptions: { maxValue: 2, minValue: -2, numberPrecision: 1 },
-						description:
-							'Penalize tokens that have appeared at all, encouraging the model to introduce new topics. Range: -2 to 2.',
-						type: 'number',
 					},
 					{
 						displayName: 'Sampling Temperature',
@@ -165,7 +180,7 @@ export class EUrouterChatModel implements INodeType {
 						default: 0.7,
 						typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
 						description:
-							'How random the output should be. <code>0</code> is deterministic; <code>2</code> is wild. Use this <i>or</i> Top P, not both.',
+							'How random the output should be. <code>0</code> is deterministic; <code>2</code> is highly varied. Use this <i>or</i> Top P, not both.',
 						type: 'number',
 					},
 					{
@@ -173,14 +188,7 @@ export class EUrouterChatModel implements INodeType {
 						name: 'timeout',
 						default: 360000,
 						description:
-							'Per-request timeout in milliseconds. Default is 6 minutes — bump higher if you use reasoning-heavy models like DeepSeek-R1 or Claude with thinking.',
-						type: 'number',
-					},
-					{
-						displayName: 'Max Retries',
-						name: 'maxRetries',
-						default: 2,
-						description: 'How many times the SDK will retry on transient network failures',
+							'Per-request timeout in milliseconds. Default is 6 minutes for reasoning-heavy models.',
 						type: 'number',
 					},
 					{
@@ -204,117 +212,11 @@ export class EUrouterChatModel implements INodeType {
 				default: {},
 				options: [
 					{
-						displayName: 'Sort By',
-						name: 'sort',
-						type: 'options',
-						default: '',
-						description: 'Which metric to prioritize when EUrouter picks a provider',
-						options: [
-							{
-								name: 'Default (Best Score)',
-								value: '',
-								description: "EUrouter's balanced score: health divided by price squared",
-							},
-							{
-								name: 'Price (Cheapest First)',
-								value: 'price',
-								description: 'Route to the cheapest provider first',
-							},
-							{
-								name: 'Latency (Fastest First)',
-								value: 'latency',
-								description: 'Route to the lowest-latency provider first',
-							},
-							{
-								name: 'Throughput (Highest First)',
-								value: 'throughput',
-								description: 'Route to the highest-throughput provider first',
-							},
-						],
-					},
-					{
-						displayName: 'Provider Order',
-						name: 'order',
-						type: 'string',
-						default: '',
-						placeholder: 'scaleway,nebius,tensorix',
-						description:
-							'Comma-separated provider slugs to try in priority order. The first available provider in the list is used. See <a href="https://www.eurouter.ai/docs/concepts/providers" target="_blank">all providers</a>.',
-					},
-					{
-						displayName: 'Only Use Providers',
-						name: 'only',
-						type: 'string',
-						default: '',
-						placeholder: 'mistral,scaleway',
-						description:
-							'Comma-separated allowlist of provider slugs. EUrouter will fail rather than route outside this list.',
-					},
-					{
-						displayName: 'Ignore Providers',
-						name: 'ignore',
-						type: 'string',
-						default: '',
-						placeholder: 'nebius',
-						description: 'Comma-separated denylist of provider slugs. These providers are never used.',
-					},
-					{
 						displayName: 'Allow Fallbacks',
 						name: 'allowFallbacks',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to retry with another provider if the first one fails. Disable for strict pinning.',
-					},
-					{
-						displayName: 'Data Residency',
-						name: 'dataResidency',
-						type: 'options',
-						default: '',
-						description: 'Restrict inference to providers physically located in the chosen region',
-						options: [
-							{
-								name: 'Any EU (Default)',
-								value: '',
-								description: 'Any provider in EUrouter\'s European pool',
-							},
-							{
-								name: 'European Union',
-								value: 'eu',
-								description: 'EU member states only',
-							},
-							{
-								name: 'European Economic Area',
-								value: 'eea',
-								description: 'EU + Iceland, Liechtenstein, and Norway',
-							},
-							{
-								name: 'Germany Only',
-								value: 'de',
-								description: 'Providers physically located in Germany',
-							},
-							{
-								name: 'France Only',
-								value: 'fr',
-								description: 'Providers physically located in France',
-							},
-						],
-					},
-					{
-						displayName: 'EU-Owned Providers Only',
-						name: 'euOwned',
-						type: 'boolean',
-						default: false,
-						description:
-							'Whether to restrict to providers whose parent company is headquartered in the EEA. Excludes EU-located subsidiaries of non-EU companies.',
-					},
-					{
-						displayName: 'Max Data Retention (Days)',
-						name: 'maxRetentionDays',
-						type: 'number',
-						default: -1,
-						typeOptions: { minValue: -1 },
-						description:
-							'Maximum number of days a provider may retain your request data. Use <code>0</code> for zero-retention providers only, <code>-1</code> for no limit.',
+						description: 'Whether to automatically retry with another provider if the first one fails',
 					},
 					{
 						displayName: 'Data Collection',
@@ -340,19 +242,119 @@ export class EUrouterChatModel implements INodeType {
 							},
 						],
 					},
+					{
+						displayName: 'Data Residency',
+						name: 'dataResidency',
+						type: 'options',
+						default: '',
+						description: 'Restrict inference to providers physically located in the chosen region',
+						options: [
+							{
+								name: 'Any EU (Default)',
+								value: '',
+								description: 'Any provider in EUrouter\'s European pool',
+							},
+							{
+								name: 'European Economic Area',
+								value: 'eea',
+								description: 'EU plus Iceland, Liechtenstein, and Norway',
+							},
+							{
+								name: 'European Union',
+								value: 'eu',
+								description: 'EU member states only',
+							},
+							{
+								name: 'France Only',
+								value: 'fr',
+								description: 'Providers physically located in France',
+							},
+							{
+								name: 'Germany Only',
+								value: 'de',
+								description: 'Providers physically located in Germany',
+							},
+						],
+					},
+					{
+						displayName: 'EU-Owned Providers Only',
+						name: 'euOwned',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to restrict to providers whose parent company is headquartered in the EEA',
+					},
+					{
+						displayName: 'Ignore Providers',
+						name: 'ignore',
+						type: 'string',
+						default: '',
+						placeholder: 'nebius',
+						description:
+							'Comma-separated denylist of provider slugs. These providers are never used.',
+					},
+					{
+						displayName: 'Max Data Retention (Days)',
+						name: 'maxRetentionDays',
+						type: 'number',
+						default: -1,
+						typeOptions: { minValue: -1 },
+						description:
+							'Maximum number of days a provider may retain your request data. Use <code>0</code> for zero-retention providers only, <code>-1</code> for no limit.',
+					},
+					{
+						displayName: 'Only Use Providers',
+						name: 'only',
+						type: 'string',
+						default: '',
+						placeholder: 'mistral,scaleway',
+						description:
+							'Comma-separated allowlist of provider slugs. EUrouter will fail rather than route outside this list.',
+					},
+					{
+						displayName: 'Provider Order',
+						name: 'order',
+						type: 'string',
+						default: '',
+						placeholder: 'scaleway,nebius,tensorix',
+						description:
+							'Comma-separated provider slugs to try in priority order. See <a href="https://www.eurouter.ai/docs/concepts/providers" target="_blank">all providers</a>.',
+					},
+					{
+						displayName: 'Sort By',
+						name: 'sort',
+						type: 'options',
+						default: '',
+						description: 'Which metric to prioritize when EUrouter picks a provider',
+						options: [
+							{
+								name: 'Default (Best Score)',
+								value: '',
+								description: 'EUrouter\'s balanced score: health divided by price squared',
+							},
+							{
+								name: 'Price (Cheapest First)',
+								value: 'price',
+								description: 'Route to the cheapest provider first',
+							},
+							{
+								name: 'Latency (Fastest First)',
+								value: 'latency',
+								description: 'Route to the lowest-latency provider first',
+							},
+							{
+								name: 'Throughput (Highest First)',
+								value: 'throughput',
+								description: 'Route to the highest-throughput provider first',
+							},
+						],
+					},
 				],
 			},
 		],
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			apiKey: string;
-			url: string;
-			appUrl?: string;
-			appTitle?: string;
-			appCategories?: string;
-		}>('eUrouterApi');
+		const credentials = await this.getCredentials<EUrouterCredentialData>('eUrouterApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -364,70 +366,32 @@ export class EUrouterChatModel implements INodeType {
 			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
-			responseFormat?: 'text' | 'json_object';
+			responseFormat?: EUrouterResponseFormat;
 		};
 
-		const routing = this.getNodeParameter('routing', itemIndex, {}) as {
-			sort?: string;
-			order?: string;
-			only?: string;
-			ignore?: string;
-			allowFallbacks?: boolean;
-			dataResidency?: string;
-			euOwned?: boolean;
-			maxRetentionDays?: number;
-			dataCollection?: string;
-		};
+		const routing = this.getNodeParameter('routing', itemIndex, {}) as EUrouterChatRouting;
 
-		// Build the provider object for EUrouter routing
-		const provider: Record<string, unknown> = {};
-		if (routing.sort) provider.sort = routing.sort;
-		if (routing.order) provider.order = routing.order.split(',').map((s) => s.trim());
-		if (routing.only) provider.only = routing.only.split(',').map((s) => s.trim());
-		if (routing.ignore) provider.ignore = routing.ignore.split(',').map((s) => s.trim());
-		if (routing.allowFallbacks === false) provider.allow_fallbacks = false;
-		if (routing.dataResidency) provider.data_residency = routing.dataResidency;
-		if (routing.euOwned) provider.eu_owned = true;
-		if (routing.maxRetentionDays !== undefined && routing.maxRetentionDays >= 0) {
-			provider.max_retention_days = routing.maxRetentionDays;
-		}
-		if (routing.dataCollection) provider.data_collection = routing.dataCollection;
-
-		const timeout = options.timeout;
-
-		// App attribution: defaults to n8n, overridable per-credential.
-		// See https://www.eurouter.ai/docs/concepts/app-attribution
-		const defaultHeaders: Record<string, string> = {
-			'HTTP-Referer': credentials.appUrl?.trim() || 'https://n8n.io',
-			'X-EUrouter-Title': credentials.appTitle?.trim() || 'n8n',
-			'X-EUrouter-Categories': credentials.appCategories?.trim() || 'programming-app,cloud-agent',
-		};
-
-		const configuration: ClientOptions = {
-			baseURL: credentials.url,
-			defaultHeaders,
-		};
-
-		const modelKwargs: Record<string, unknown> = {};
-		if (options.responseFormat) {
-			modelKwargs.response_format = { type: options.responseFormat };
-		}
-		if (Object.keys(provider).length > 0) {
-			modelKwargs.provider = provider;
-		}
-
-		const model = new ChatOpenAI({
-			apiKey: credentials.apiKey,
-			model: modelName,
-			...options,
-			timeout,
-			maxRetries: options.maxRetries ?? 2,
-			configuration,
-			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
+		const additionalParams = buildChatAdditionalParams({
+			responseFormat: options.responseFormat,
+			routing,
 		});
 
-		return {
-			response: model,
-		};
+		return supplyModel(this, {
+			type: 'openai',
+			baseUrl: credentials.url,
+			apiKey: credentials.apiKey,
+			model: modelName,
+			defaultHeaders: createEUrouterDefaultHeaders(credentials),
+			frequencyPenalty: options.frequencyPenalty,
+			maxTokens:
+				options.maxTokens !== undefined && options.maxTokens >= 0 ? options.maxTokens : undefined,
+			maxRetries: options.maxRetries ?? 2,
+			presencePenalty: options.presencePenalty,
+			temperature: options.temperature,
+			timeout: options.timeout,
+			topP: options.topP,
+			additionalParams:
+				Object.keys(additionalParams).length > 0 ? additionalParams : undefined,
+		});
 	}
 }

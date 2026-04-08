@@ -75,7 +75,7 @@ For Docker, mount the package into your custom extensions directory or use the [
 4. Connect it to the **Language Model** input of an AI Agent or Chain
 5. Pick a model from the dropdown (the list is fetched live)
 
-That's it. The credential test calls `GET /models` and will turn green if your key is valid.
+That's it. The credential test calls `GET /credits`, so invalid keys fail immediately instead of producing a false success.
 
 ---
 
@@ -106,7 +106,7 @@ That's it. The credential test calls `GET /models` and will turn green if your k
 
 ### Strict EU-only inference
 
-In the **Routing** options of the Chat Model node:
+In the **Provider Routing & Privacy** options of the Chat Model node:
 
 - **Data Residency:** `EEA`
 - **EU-Owned Providers Only:** `true`
@@ -223,7 +223,7 @@ Check that you've set **App URL** and **App Title** in the credential. Without t
 - **Node.js:** ≥ 20.15
 - **n8n nodes API version:** 1
 
-This node uses the same `@langchain/openai` ChatOpenAI / OpenAIEmbeddings classes that n8n's native OpenAI, OpenRouter, DeepSeek, Mistral, and Groq nodes use, so behavior in Agents and Chains is identical to those nodes.
+This node uses n8n's official AI node SDK for chat models and sends OpenAI-compatible requests for embeddings, so it behaves like the rest of n8n's AI ecosystem without depending on direct `@langchain/openai` imports.
 
 ---
 

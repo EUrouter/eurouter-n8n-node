@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-eurouter",
 	"version": "1.1.0",
-	"description": "n8n community node for EUrouter — the European AI gateway. 100+ models served from EU infrastructure with GDPR-friendly routing controls.",
+	"description": "n8n community node for EUrouter — the European AI gateway with 100+ EU-hosted, GDPR-friendly models",
 	"license": "MIT",
 	"homepage": "https://www.eurouter.ai",
 	"keywords": [
@@ -45,16 +45,24 @@
 		"url": "https://www.eurouter.ai"
 	},
 	"scripts": {
-		"build": "tsc && cp nodes/EUrouterChatModel/eurouter-icon.svg dist/nodes/EUrouterChatModel/ && cp nodes/EUrouterEmbeddings/eurouter-icon.svg dist/nodes/EUrouterEmbeddings/",
-		"dev": "tsc --watch",
-		"lint": "eslint . --ext .ts",
-		"prepublishOnly": "npm run build"
+		"build": "n8n-node build",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "n8n-node release",
+		"release:check": "npm run build && npm pack --dry-run",
+		"scan:published": "npx @n8n/scan-community-package",
+		"test:phase1": "node --test test/phase1-readiness.test.mjs",
+		"test:phase23": "node --test test/phase2-phase3-readiness.test.mjs test/eurouter-ai-helpers.test.mjs",
+		"prepublishOnly": "n8n-node prerelease"
 	},
 	"files": [
 		"dist"
 	],
 	"n8n": {
 		"n8nNodesApiVersion": 1,
+		"aiNodeSdkVersion": 1,
+		"strict": true,
 		"credentials": [
 			"dist/credentials/EUrouterApi.credentials.js"
 		],
@@ -64,11 +72,19 @@
 		]
 	},
 	"devDependencies": {
+		"@n8n/ai-node-sdk": "^0.4.1",
+		"@n8n/node-cli": "^0.23.1",
+		"@n8n/eslint-plugin-community-nodes": "0.10.0",
+		"@eslint/js": "9.39.4",
 		"typescript": "~5.7.0",
-		"@types/node": "^22.0.0"
+		"@types/node": "^22.0.0",
+		"eslint": "9.39.4",
+		"release-it": "^19.0.4",
+		"n8n-workflow": "^2.13.1",
+		"typescript-eslint": "8.58.1"
 	},
 	"peerDependencies": {
 		"n8n-workflow": "*",
-		"@langchain/openai": "*"
+		"@n8n/ai-node-sdk": "*"
 	}
 }
