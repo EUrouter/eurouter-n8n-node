@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
 	buildChatAdditionalParams,
+	createEUrouterDefaultHeaders,
 	EUrouterEmbeddingsClient,
 } from '../nodes/shared/eurouterAi.ts';
 
@@ -36,6 +37,29 @@ test('buildChatAdditionalParams maps routing controls into OpenAI-compatible par
 			data_collection: 'deny',
 		},
 	});
+});
+
+test('createEUrouterDefaultHeaders uses n8n attribution by default', () => {
+	assert.deepEqual(createEUrouterDefaultHeaders(), {
+		'HTTP-Referer': 'https://n8n.io',
+		'X-EUrouter-Title': 'n8n',
+		'X-EUrouter-Categories': 'programming-app,cloud-agent',
+	});
+});
+
+test('createEUrouterDefaultHeaders applies trimmed credential overrides', () => {
+	assert.deepEqual(
+		createEUrouterDefaultHeaders({
+			appUrl: ' https://app.eurouter.ai ',
+			appTitle: ' EUrouter Studio ',
+			appCategories: ' cloud-agent,programming-app ',
+		}),
+		{
+			'HTTP-Referer': 'https://app.eurouter.ai',
+			'X-EUrouter-Title': 'EUrouter Studio',
+			'X-EUrouter-Categories': 'cloud-agent,programming-app',
+		},
+	);
 });
 
 test('EUrouterEmbeddingsClient batches embedding requests and strips new lines', async () => {
@@ -95,5 +119,43 @@ test('EUrouterEmbeddingsClient omits zero dimensions when embedding a query', as
 	assert.deepEqual(requestBody, {
 		model: 'bge-m3',
 		input: ['What is EUrouter?'],
+	});
+});
+
+test('EUrouterEmbeddingsClient includes provider routing in embedding requests', async () => {
+	let requestBody;
+	const client = new EUrouterEmbeddingsClient({
+		model: 'bge-m3',
+		stripNewLines: false,
+		routing: {
+			sort: 'latency',
+			only: 'mistral, scaleway',
+			dataResidency: 'eea',
+			euOwned: true,
+			maxRetentionDays: 0,
+			dataCollection: 'deny',
+		},
+		request: async (request) => {
+			requestBody = request.body;
+
+			return {
+				data: [{ embedding: [0.1, 0.2, 0.3] }],
+			};
+		},
+	});
+
+	await client.embedQuery('Route this through strict EU providers');
+
+	assert.deepEqual(requestBody, {
+		model: 'bge-m3',
+		input: ['Route this through strict EU providers'],
+		provider: {
+			sort: 'latency',
+			only: ['mistral', 'scaleway'],
+			data_residency: 'eea',
+			eu_owned: true,
+			max_retention_days: 0,
+			data_collection: 'deny',
+		},
 	});
 });

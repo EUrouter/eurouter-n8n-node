@@ -57,3 +57,21 @@ test('Credential validation uses an auth-protected endpoint and surfaces invalid
 	assert.match(credentials, /message:\s*'Invalid API key'/);
 	assert.doesNotMatch(credentials, /url:\s*'\/models'/);
 });
+
+test('PR 13 UX additions remain present on top of the issue-work architecture', () => {
+	const credentials = readFileSync(credentialPath, 'utf8');
+	const chatNode = readFileSync(chatNodePath, 'utf8');
+	const embeddingsNode = readFileSync(embeddingsNodePath, 'utf8');
+
+	assert.match(credentials, /name:\s*'appUrl'/);
+	assert.match(credentials, /name:\s*'appTitle'/);
+	assert.match(credentials, /name:\s*'appCategories'/);
+	assert.match(credentials, /eurouter-icon\.svg/);
+	assert.match(chatNode, /subtitle:\s*'=\{\{ \$parameter\.model \}\}'/);
+	assert.match(chatNode, /displayName:\s*'Sampling Options'/);
+	assert.match(chatNode, /displayName:\s*'Provider Routing & Privacy'/);
+	assert.match(chatNode, /createEUrouterDefaultHeaders\(credentials\)/);
+	assert.match(embeddingsNode, /displayName:\s*'Embedding Options'/);
+	assert.match(embeddingsNode, /displayName:\s*'Provider Routing & Privacy'/);
+	assert.match(embeddingsNode, /createEUrouterDefaultHeaders\(credentials\)/);
+});

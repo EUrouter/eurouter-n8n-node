@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-eurouter",
 	"version": "1.1.0",
-	"description": "n8n community node for EUrouter — EU-hosted, GDPR-friendly AI gateway with 68+ models",
+	"description": "n8n community node for EUrouter — the European AI gateway with 100+ EU-hosted, GDPR-friendly models",
 	"license": "MIT",
 	"homepage": "https://www.eurouter.ai",
 	"keywords": [
@@ -10,17 +10,39 @@
 		"eurouter",
 		"ai",
 		"llm",
+		"chat-model",
+		"embeddings",
+		"langchain",
+		"agent",
+		"vector-store",
+		"rag",
+		"openai-compatible",
+		"claude",
+		"mistral",
+		"deepseek",
+		"qwen",
+		"llama",
 		"eu",
 		"gdpr",
-		"openai-compatible"
+		"data-residency",
+		"sovereign-ai",
+		"european-ai"
 	],
 	"author": {
 		"name": "EUrouter",
-		"email": "david@eurouter.ai"
+		"email": "david@eurouter.ai",
+		"url": "https://www.eurouter.ai"
 	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/EUrouter/eurouter-n8n-node.git"
+	},
+	"bugs": {
+		"url": "https://github.com/EUrouter/eurouter-n8n-node/issues"
+	},
+	"funding": {
+		"type": "individual",
+		"url": "https://www.eurouter.ai"
 	},
 	"scripts": {
 		"build": "n8n-node build",

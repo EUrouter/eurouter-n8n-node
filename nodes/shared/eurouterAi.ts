@@ -1,5 +1,13 @@
 export type EUrouterResponseFormat = 'text' | 'json_object';
 
+export interface EUrouterCredentialData {
+	apiKey: string;
+	url: string;
+	appUrl?: string;
+	appTitle?: string;
+	appCategories?: string;
+}
+
 export interface EUrouterChatRouting {
 	sort?: string;
 	order?: string;
@@ -21,6 +29,7 @@ export interface EUrouterEmbeddingsRequestBody {
 	model: string;
 	input: string[];
 	dimensions?: number;
+	provider?: Record<string, unknown>;
 }
 
 export interface EUrouterEmbeddingsRequest {
@@ -43,16 +52,27 @@ export interface EUrouterEmbeddingsClientOptions {
 	dimensions?: number;
 	timeout?: number;
 	headers?: Record<string, string>;
+	routing?: EUrouterChatRouting;
 	request: (request: EUrouterEmbeddingsRequest) => Promise<EUrouterEmbeddingsResponse>;
 }
 
 const DEFAULT_HEADERS = {
 	'HTTP-Referer': 'https://n8n.io',
 	'X-EUrouter-Title': 'n8n',
+	'X-EUrouter-Categories': 'programming-app,cloud-agent',
 } as const;
 
-export function createEUrouterDefaultHeaders(): Record<string, string> {
-	return { ...DEFAULT_HEADERS };
+export function createEUrouterDefaultHeaders(
+	credentials?: Pick<EUrouterCredentialData, 'appUrl' | 'appTitle' | 'appCategories'>,
+): Record<string, string> {
+	return {
+		'HTTP-Referer': normalizeHeaderValue(credentials?.appUrl, DEFAULT_HEADERS['HTTP-Referer']),
+		'X-EUrouter-Title': normalizeHeaderValue(credentials?.appTitle, DEFAULT_HEADERS['X-EUrouter-Title']),
+		'X-EUrouter-Categories': normalizeHeaderValue(
+			credentials?.appCategories,
+			DEFAULT_HEADERS['X-EUrouter-Categories'],
+		),
+	};
 }
 
 export function buildChatAdditionalParams(
@@ -136,12 +156,15 @@ export class EUrouterEmbeddingsClient {
 	}
 
 	private buildRequestBody(input: string[]): EUrouterEmbeddingsRequestBody {
+		const provider = buildProviderParams(this.options.routing ?? {});
+
 		return {
 			model: this.options.model,
 			input,
 			...(this.options.dimensions !== undefined && this.options.dimensions > 0
 				? { dimensions: this.options.dimensions }
 				: {}),
+			...(provider ? { provider } : {}),
 		};
 	}
 }
@@ -171,6 +194,12 @@ function splitProviderList(value: string): string[] | undefined {
 		.filter((item) => item.length > 0);
 
 	return items.length > 0 ? items : undefined;
+}
+
+function normalizeHeaderValue(value: string | undefined, fallback: string): string {
+	const trimmedValue = value?.trim();
+
+	return trimmedValue && trimmedValue.length > 0 ? trimmedValue : fallback;
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
