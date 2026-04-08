@@ -43,8 +43,17 @@ export class EUrouterApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{ $credentials.url }}',
-			url: '/models',
+			url: '/credits',
 			method: 'GET',
 		},
+		rules: [
+			{
+				type: 'responseCode',
+				properties: {
+					value: 200,
+					message: 'Invalid API key',
+				},
+			},
+		],
 	};
 }

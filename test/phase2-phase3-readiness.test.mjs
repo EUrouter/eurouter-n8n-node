@@ -6,6 +6,7 @@ import path from 'node:path';
 const repoRoot = process.cwd();
 const packageJsonPath = path.join(repoRoot, 'package.json');
 const publishWorkflowPath = path.join(repoRoot, '.github', 'workflows', 'publish.yml');
+const credentialPath = path.join(repoRoot, 'credentials', 'EUrouterApi.credentials.ts');
 const chatNodePath = path.join(repoRoot, 'nodes', 'EUrouterChatModel', 'EUrouterChatModel.node.ts');
 const embeddingsNodePath = path.join(
 	repoRoot,
@@ -45,4 +46,14 @@ test('Phase 3 removes direct @langchain/openai imports from the node sources', (
 
 	assert.doesNotMatch(chatNode, /@langchain\/openai/);
 	assert.doesNotMatch(embeddingsNode, /@langchain\/openai/);
+});
+
+test('Credential validation uses an auth-protected endpoint and surfaces invalid keys', () => {
+	const credentials = readFileSync(credentialPath, 'utf8');
+
+	assert.match(credentials, /url:\s*'\/credits'/);
+	assert.match(credentials, /type:\s*'responseCode'/);
+	assert.match(credentials, /value:\s*200/);
+	assert.match(credentials, /message:\s*'Invalid API key'/);
+	assert.doesNotMatch(credentials, /url:\s*'\/models'/);
 });
