@@ -10,6 +10,8 @@ export class EUrouterApi implements ICredentialType {
 
 	displayName = 'EUrouter';
 
+	icon = 'file:../nodes/EUrouterChatModel/eurouter.svg' as const;
+
 	documentationUrl = 'https://www.eurouter.ai/docs';
 
 	properties: INodeProperties[] = [
