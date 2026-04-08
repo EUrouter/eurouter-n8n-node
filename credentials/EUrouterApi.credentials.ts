@@ -8,7 +8,7 @@ import type {
 export class EUrouterApi implements ICredentialType {
 	name = 'eUrouterApi';
 
-	displayName = 'EUrouter';
+	displayName = 'EUrouter API';
 
 	icon = 'file:../nodes/EUrouterChatModel/eurouter.svg' as const;
 
