@@ -1,7 +1,7 @@
 {
 	"name": "n8n-nodes-eurouter",
-	"version": "1.0.0",
-	"description": "n8n community node for EUrouter — EU-hosted, GDPR-friendly AI gateway with 68+ models",
+	"version": "1.1.0",
+	"description": "n8n community node for EUrouter — the European AI gateway. 100+ models served from EU infrastructure with GDPR-friendly routing controls.",
 	"license": "MIT",
 	"homepage": "https://www.eurouter.ai",
 	"keywords": [
@@ -10,20 +10,42 @@
 		"eurouter",
 		"ai",
 		"llm",
+		"chat-model",
+		"embeddings",
+		"langchain",
+		"agent",
+		"vector-store",
+		"rag",
+		"openai-compatible",
+		"claude",
+		"mistral",
+		"deepseek",
+		"qwen",
+		"llama",
 		"eu",
 		"gdpr",
-		"openai-compatible"
+		"data-residency",
+		"sovereign-ai",
+		"european-ai"
 	],
 	"author": {
 		"name": "EUrouter",
-		"email": "david@eurouter.ai"
+		"email": "david@eurouter.ai",
+		"url": "https://www.eurouter.ai"
 	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/EUrouter/eurouter-n8n-node.git"
 	},
+	"bugs": {
+		"url": "https://github.com/EUrouter/eurouter-n8n-node/issues"
+	},
+	"funding": {
+		"type": "individual",
+		"url": "https://www.eurouter.ai"
+	},
 	"scripts": {
-		"build": "tsc && cp -r icons dist/icons && cp nodes/EUrouterChatModel/*.svg dist/nodes/EUrouterChatModel/ && cp nodes/EUrouterEmbeddings/*.svg dist/nodes/EUrouterEmbeddings/ 2>/dev/null || true",
+		"build": "tsc && cp nodes/EUrouterChatModel/eurouter-icon.svg dist/nodes/EUrouterChatModel/ && cp nodes/EUrouterEmbeddings/eurouter-icon.svg dist/nodes/EUrouterEmbeddings/",
 		"dev": "tsc --watch",
 		"lint": "eslint . --ext .ts",
 		"prepublishOnly": "npm run build"
