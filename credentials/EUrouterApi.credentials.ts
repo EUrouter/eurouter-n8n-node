@@ -27,7 +27,7 @@ export class EUrouterApi implements ICredentialType {
 		},
 		{
 			displayName:
-				'⚙️ <b>App Attribution</b> (optional)<br/>By default, every request from this node is attributed to <b>n8n</b> in EUrouter analytics. If you are embedding n8n inside your own product, you can override the attribution below to track usage under your own brand. <a href="https://www.eurouter.ai/docs/concepts/app-attribution" target="_blank">Learn more</a>.',
+				'<b>App Attribution</b> (optional)<br/>By default, every request from this node is attributed to <b>n8n</b> in EUrouter analytics. If you are embedding n8n inside your own product, you can override the attribution below to track usage under your own brand. <a href="https://www.eurouter.ai/docs/concepts/app-attribution" target="_blank">Learn more</a>.',
 			name: 'attributionNotice',
 			type: 'notice',
 			default: '',
