@@ -59,7 +59,7 @@ export class EUrouterChatModel implements INodeType {
 		properties: [
 			{
 				displayName:
-					'🇪🇺 Every request is routed through European infrastructure by default. Use the <b>Provider Routing & Privacy</b> options below to lock down to a specific country, EU-owned providers only, zero data retention, or no training-data collection.',
+					'Every request is routed through European infrastructure by default. Use the <b>Provider Routing & Privacy</b> options below to lock down to a specific country, EU-owned providers only, zero data retention, or no training-data collection.',
 				name: 'eUrouterNotice',
 				type: 'notice',
 				default: '',
@@ -100,12 +100,6 @@ export class EUrouterChatModel implements INodeType {
 								],
 							},
 						},
-					},
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
 					},
 				},
 				default: 'claude-sonnet-4-6',

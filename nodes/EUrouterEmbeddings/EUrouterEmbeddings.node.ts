@@ -57,7 +57,7 @@ export class EUrouterEmbeddings implements INodeType {
 		properties: [
 			{
 				displayName:
-					'🇪🇺 Embeddings often touch entire document corpora, so the <b>Provider Routing & Privacy</b> options below let you pin a country, EU-owned providers only, zero retention, and no training-data collection.',
+					'Embeddings often touch entire document corpora, so the <b>Provider Routing & Privacy</b> options below let you pin a country, EU-owned providers only, zero retention, and no training-data collection.',
 				name: 'eUrouterEmbeddingsNotice',
 				type: 'notice',
 				default: '',
@@ -105,12 +105,6 @@ export class EUrouterEmbeddings implements INodeType {
 								],
 							},
 						},
-					},
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
 					},
 				},
 				default: 'bge-m3',
